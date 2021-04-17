@@ -67,8 +67,6 @@ int main(int argc, char **argv) {
 		//Except PROC[0] every other follows --> PROC[1] will have from the left the 2 last elements of PROC[size-1] and on the right the 2 first elements of PROC[2]
 		/************************************--> PROC[2] L(2 el from): PROC[1] R(2 el from): PROC[3]
 		 ************************************--> PROC[3] L(2 el from): PROC[2] R(2 el from): PROC[4]*/
-
-
 		/************************* ***********************************************************************************************************/
 
 		// Stencil values
@@ -78,6 +76,7 @@ int main(int argc, char **argv) {
 		double *left = (double*)malloc(EXTENT*sizeof(double));
 		double *right = (double*)malloc(EXTENT*sizeof(double));
 
+		// Send/Recv to and from left processor.
 		if (rank != 1) {
 			// Send to left processor (which receives into its right buffer).
 			MPI_Isend(buffer, EXTENT, MPI_DOUBLE, rank-1, sendL_tags[rank-1], MPI_COMM_WORLD, &l_send_request[rank-1]);
@@ -93,6 +92,8 @@ int main(int argc, char **argv) {
         	MPI_Wait(&l_send_request[size-2], &status);
         	MPI_Wait(&l_recv_request[size-2], &status);
 		}
+
+		// Send/Recv to and from right processor.
 		if (rank != (size-1)) {
 			// Receive from right processor (into this processor's right buffer).
 			MPI_Irecv(right, EXTENT, MPI_DOUBLE, rank+1, sendL_tags[rank], MPI_COMM_WORLD,&r_recv_request[rank]);
