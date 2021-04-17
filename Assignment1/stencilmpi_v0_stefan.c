@@ -48,9 +48,6 @@ int main(int argc, char **argv) {
 		for (int i=0; i<num_values; i++) {
 			printf("[PROC %d] f(x%d) = %lf\n", rank, i, input[i]);
 			if ((i%chunk) == 0) {
-				//printf("istart VALUE:%d\n",istart);
-				//printf("input+istart POINTER:%p\n",input+istart);
-				//printf("input+istart VALUE:%lf\n",*(input+istart));
 				printf("[PROC %d] tag_idx = %d, sending to PROC %d\n", rank, tag_idx, tag_idx+1);
 				for (int kappa = istart; kappa < (istart+chunk); kappa++){
 					printf("[PROC %d] Value at index %d to send: %lf\n", rank, kappa, input[kappa]);
@@ -58,25 +55,24 @@ int main(int argc, char **argv) {
 				MPI_Send(input+istart, chunk, MPI_DOUBLE, tag_idx+1, tags[tag_idx], MPI_COMM_WORLD);
 				tag_idx++;
 				istart = tag_idx*chunk;
-				//printf("Rank %d got tag:%d\n",rank, tag_idx);
-				//printf("istart SIZE:%ld\n", sizeof(input+istart)/sizeof((input+istart)[0]));
-				//printf("input+istart value:%f\n", *(input+istart) );
 			}
 		}
 	} else {
 		double *buffer = (double*)malloc(chunk*sizeof(double));
 		printf("[PROC %d] tag_idx = %d, receiving from PROC 0\n", rank, rank-1);
 		MPI_Recv(buffer, chunk, MPI_DOUBLE, 0, tags[rank-1], MPI_COMM_WORLD, &status);
+
+		for (int kappa = 0; kappa < chunk; kappa++){
+			printf("[PROC %d] Buffer value at index %d is %f:\n", rank, kappa, buffer[kappa]);
+		}
+
 		//Except PROC[0] every other follows --> PROC[1] will have from the left the 2 last elements of PROC[size-1] and on the right the 2 first elements of PROC[2]
 		/************************************--> PROC[2] L(2 el from): PROC[1] R(2 el from): PROC[3]
 		 ************************************--> PROC[3] L(2 el from): PROC[2] R(2 el from): PROC[4]*/
-		
-		/*for (int kappa = 0; kappa < chunk; kappa++){
-			printf("[PROC %d] Receiver value %d is %f:\n", rank, kappa, receiver[kappa]);
-		}*/
+
 
 		/************************* ***********************************************************************************************************/
-		
+
 		// Stencil values
 		const int STENCIL_WIDTH = 5;
 		const int EXTENT = STENCIL_WIDTH/2;
@@ -84,25 +80,44 @@ int main(int argc, char **argv) {
 		double *left = (double*)malloc(EXTENT*sizeof(double));
 		double *right = (double*)malloc(EXTENT*sizeof(double));
 
-		
-		MPI_Isend(buffer, EXTENT, MPI_DOUBLE, rank-1, left_tags[rank-1], MPI_COMM_WORLD, &l_send_request[rank-1]);
-		MPI_Irecv(right, EXTENT, MPI_DOUBLE, rank+1, tags[rank], MPI_COMM_WORLD,&l_recv_request[rank]);
-        MPI_Wait(&l_send_request[rank-1], &status);
-        MPI_Wait(&l_recv_request[rank], &status);
-		if (rank != (size-1)){
+		if (rank != 1) {
+			// Send to left processor (which receives into its right buffer).
+			MPI_Isend(buffer, EXTENT, MPI_DOUBLE, rank-1, left_tags[rank-1], MPI_COMM_WORLD, &l_send_request[rank-1]);
+			// Receive from left processor (into this processor's left buffer).
+			MPI_Irecv(left, EXTENT, MPI_DOUBLE, rank-1, tags[rank-1], MPI_COMM_WORLD,&l_recv_request[rank-1]);
+        	MPI_Wait(&l_send_request[rank-1], &status);
+        	MPI_Wait(&l_recv_request[rank-1], &status);
+		} else {
+			// Set the first processor to send to the last.
+			MPI_Isend(buffer, EXTENT, MPI_DOUBLE, size-1, left_tags[size-1], MPI_COMM_WORLD, &l_send_request[size-1]);
+			// Set the first processor to receive from the last.
+			MPI_Irecv(left, EXTENT, MPI_DOUBLE, size-1, tags[size-1], MPI_COMM_WORLD,&l_recv_request[size-1]);
+        	MPI_Wait(&l_send_request[size-1], &status);
+        	MPI_Wait(&l_recv_request[size-1], &status);
+		}
+		if (rank != (size-1)) {
+			// Send to right processor (which receives into its left buffer).
 			MPI_Isend(buffer+(chunk-EXTENT), EXTENT, MPI_DOUBLE, rank+1, right_tags[rank], MPI_COMM_WORLD, &r_send_request[rank]);
-		}else{
+			// Receive from right processor (into this processor's right buffer).
+			MPI_Irecv(right, EXTENT, MPI_DOUBLE, rank+1, tags[rank], MPI_COMM_WORLD,&r_recv_request[rank]);
+			MPI_Wait(&r_send_request[rank], &status);
+  	      	MPI_Wait(&r_recv_request[rank], &status);
+		} else {
+			// Set the last processor to send to the first.
 			MPI_Isend(buffer+(chunk-EXTENT), EXTENT, MPI_DOUBLE, 1, right_tags[size-1], MPI_COMM_WORLD, &r_send_request[size-1]);
+			// Set the last processor to receive from the first.
+			MPI_Irecv(right, EXTENT, MPI_DOUBLE, 1, tags[size-1], MPI_COMM_WORLD,&r_recv_request[size-1]);
+			MPI_Wait(&r_send_request[size-1], &status);
+  	      	MPI_Wait(&r_recv_request[size-1], &status);
 		}
-		
-        if (rank != 1){
-			MPI_Irecv(left, EXTENT, MPI_DOUBLE, rank-1, tags[rank-1], MPI_COMM_WORLD,&r_recv_request[rank-1]);
-		}else {
-			MPI_Irecv(left, EXTENT, MPI_DOUBLE, size-1, tags[size-1], MPI_COMM_WORLD,&r_recv_request[size-1]);
+
+		for (int kappa = 0; kappa < EXTENT; kappa++) {
+			printf("[PROC %d] Left value at index %d is %f:\n", rank, kappa, left[kappa]);
 		}
-		MPI_Wait(&r_send_request[rank], &status);
-        MPI_Wait(&r_recv_request[rank-1], &status);
-	
+		for (int kappa = 0; kappa < EXTENT; kappa++) {
+			printf("[PROC %d] Right value at index %d is %f:\n", rank, kappa, right[kappa]);
+		}
+
 		// Repeatedly apply stencil
 		for (int s=0; s<num_steps; s++) {
 
@@ -151,14 +166,14 @@ int main(int argc, char **argv) {
 
     }
 
-
 	// Start timer
 	double start = MPI_Wtime();
 
+	/*
 	// Repeatedly apply stencil
 	for (int s=0; s<num_steps; s++) {
 
-        // Apply stencil on left boundary with periodic cond 
+        // Apply stencil on left boundary with periodic cond
 		//for (int i= rank*chunk; i<EXTENT; i++)
 		for (int i=0; i<EXTENT; i++) {
 			double result = 0;
@@ -197,6 +212,7 @@ int main(int argc, char **argv) {
 			output = tmp;
 		}
 	}
+	*/
 
 	// Stop timer
 	double my_execution_time = MPI_Wtime() - start;
