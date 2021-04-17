@@ -6,11 +6,11 @@ CC = mpicc
 CFLAGS = -std=c99 -g -O3
 LIBS = -lm
 
-BIN = stencil
+BIN = stencilmpi_v0
 
 all: $(BIN)
 
-stencil: stencil.c
+stencilmpi_v0: stencilmpi_v0.c
 	$(CC) $(CFLAGS) -o $@ $< $(LIBS)
 	
 clean:
