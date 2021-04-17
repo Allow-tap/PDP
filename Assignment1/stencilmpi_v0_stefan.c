@@ -88,7 +88,7 @@ int main(int argc, char **argv) {
         	MPI_Wait(&l_send_request[rank-1], &status);
         	MPI_Wait(&l_recv_request[rank-1], &status);
 		} else {
-			// Set the first processor to send to the last.
+			// Set the first processor to send to the last
 			MPI_Isend(buffer, EXTENT, MPI_DOUBLE, size-1, left_tags[size-1], MPI_COMM_WORLD, &l_send_request[size-1]);
 			// Set the first processor to receive from the last.
 			MPI_Irecv(left, EXTENT, MPI_DOUBLE, size-1, tags[size-1], MPI_COMM_WORLD,&l_recv_request[size-1]);
