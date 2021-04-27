@@ -3,6 +3,6 @@
 
 double *randMat(const int N);
 void printMatrix(double* restrict Matrix, const int N);
-void writeMatrix(double* restrict Matrix, const int N, const char* fileName);
+void writeMatrix(double* restrict Matrix, const int N, char* fileName);
 
 #endif

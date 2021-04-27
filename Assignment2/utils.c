@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <sys/time.h>
+#include <time.h>
 #include "utils.h"
 
 double *randMat(const int N) {
@@ -27,9 +27,9 @@ void printMatrix(double* restrict Matrix, const int N) {
     }
 }
 
-void writeMatrix(double* restrict Matrix, const int N, const char* fileName)
+void writeMatrix(double* restrict Matrix, const int N, char* fileName)
 {
-    FILE* fp = fopen(fileName, 'w+');
+    FILE* fp = fopen(fileName, "w+");
     if (fp == NULL)
         return;
     for (int i = 0; i < N; i++)
