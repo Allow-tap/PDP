@@ -32,3 +32,6 @@ check:
 
 Link here:  
 https://matrix.reshish.com/zh/multCalculation.php
+
+# NOTE
+There is something wrong with serial code!
