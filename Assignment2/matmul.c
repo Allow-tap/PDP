@@ -135,9 +135,11 @@ int main(int argc, char **argv) {
 	
 	// Measure time. Exclude file write. 
     executionTime = MPI_Wtime() - executionTime;
-	if (rank == 0){ printf("%f\t", executionTime);}
-
-
+	if (rank == 0){ printf("%f\n", executionTime);}
+	// Get the max runtime out of all processors.
+	double max_parallel_runtime;
+	MPI_Reduce(&executionTime, &max_parallel_runtime, 1, MPI_DOUBLE, MPI_MAX, 0, MPI_COMM_WORLD);
+	if (rank == 0){ printf("%f\n", max_parallel_runtime);}
 	/////////////////////////////////////////////////////////////////////////////
 	if (rank == 0){
 		/// Print output
