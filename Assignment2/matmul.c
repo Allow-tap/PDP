@@ -84,10 +84,11 @@ int main(int argc, char **argv) {
 	localB_s = (double *) malloc((N*chunk)*sizeof(double));
 	localB_r = (double *) malloc((N*chunk)*sizeof(double));
 	// Start the timer. Do not include file operations.
-    executionTime = MPI_Wtime();
+    
 	//printf("\nBefore Scatter!\n");
 	// Deliver the data
 	MPI_Barrier(MPI_COMM_WORLD);
+	executionTime = MPI_Wtime();
 	MPI_Scatter(A ,chunk*N,MPI_DOUBLE,localA,chunk*N,MPI_DOUBLE,0,MPI_COMM_WORLD);
 	MPI_Scatter(BC,chunk*N,MPI_DOUBLE,localB_r,chunk*N,MPI_DOUBLE,0,MPI_COMM_WORLD);	
 	//printf("\nAfter Scatter!\n");
