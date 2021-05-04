@@ -17,7 +17,7 @@ TIMESFILE1="times_output_fixedprocs.txt"
 LOWLIM=1
 UPLIM=10
 
-for N in {$LOWLIM..$UPLIM}
+for N in $( eval echo {$LOWLIM..$UPLIM} )
 do
         echo "Problem size = $N"
 
