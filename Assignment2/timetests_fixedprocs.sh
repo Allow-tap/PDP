@@ -19,9 +19,8 @@ UPLIM=10
 
 for N in $( eval echo {$LOWLIM..$UPLIM} )
 do
+	N=$(( $N*1000 ))
         echo "Problem size = $N"
-
-	N=$(( $N*500 ))
 	inputfile="input$N.txt"
 	outputfile="output$N.txt"
 
