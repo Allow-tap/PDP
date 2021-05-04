@@ -68,6 +68,7 @@ int main(int argc, char **argv) {
 				BC[j*N+i] = B[i*N+j];
 			}		
 		}
+		fclose(input);
 	}
 	
 	localC = (double *) malloc((chunk*N)*sizeof(double));
@@ -125,26 +126,26 @@ int main(int argc, char **argv) {
 	if (rank == 0){ printf("%f\n", max_parallel_runtime);}
 	
 	if (rank == 0){
-		/// Print output
-		FILE *output = NULL;
-		if (NULL == (output = fopen(output_name, "w+"))) {
-			perror("Error on opening input file");
-			return -2;
-		}
-		for (int i = 0;i < N; i++){
-			for (int j = 0; j < N; j++){
-				warn=fprintf(output, "%lf ", C[i*N+j]);
-				//printf("%lf\n",C[i*N+j]);
-			}	
-			fprintf(output, "\n"); 
-			
-		}
+		///// Print output
+		//FILE *output = NULL;
+		//if (NULL == (output = fopen(output_name, "w+"))) {
+		//	perror("Error on opening input file");
+		//	return -2;
+		//}
+		//for (int i = 0;i < N; i++){
+		//	for (int j = 0; j < N; j++){
+		//		warn=fprintf(output, "%lf ", C[i*N+j]);
+		//		//printf("%lf\n",C[i*N+j]);
+		//	}	
+		//	fprintf(output, "\n"); 
+		//	
+		//}
+		//fclose(output);
+
 		free(A);
 		free(B);
 		free(BC);
 		free(C);
-		fclose(input);
-		fclose(output);
 	}
 	
 	free(localA);
