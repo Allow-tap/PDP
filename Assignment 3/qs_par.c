@@ -8,6 +8,7 @@
 /* Forward Declaration */
 double* gen_num_vector(int seq, int len);
 double *merge(double *v1, int n1, double *v2, int n2);
+int cmpfunc (const void * a, const void * b);
 
 int main(int argc, char **argv) {
 
@@ -22,9 +23,6 @@ int main(int argc, char **argv) {
     len=atoi(argv[2]);
     //pivotStrategy = atoi(argv[3]);
     data = gen_num_vector(seq,len);
-    /*if ( data != NULL)
-        printf("SUCCESS\n");*/
-
 
     /* 1. Divide and distribute the data into p equal parts, one per process */
     int chunk = len / size;
@@ -38,15 +36,23 @@ int main(int argc, char **argv) {
     rcv_buffer = (double*)malloc(chunk*sizeof(double));
     MPI_Scatter(data, chunk, MPI_DOUBLE, rcv_buffer, chunk, MPI_DOUBLE,0,MPI_COMM_WORLD);
     
-    
     /*Prints the values each PROC receives*/
+    /*
     for (int i =0; i < chunk; ++i)
-        printf("RANK[%d]\tElement %d: [%f]\n",rank, i, rcv_buffer[i]); 
-    
-    /* 2. Sort the data locally for each process  */
-    
+        printf("RANK[%d]\tdata[%d]=[%f]\n",rank, i, rcv_buffer[i]); 
+    */
     
     
+    /* 2. Sort the data locally for each process */
+    qsort(rcv_buffer, chunk, sizeof(double), cmpfunc); /* qsort() from stdlib does that for us */
+
+    /*Is it sorted?  Sanity check */
+        /*Prints the values each PROC after local sort*/
+        
+        for (int i =0; i < chunk; ++i)
+          printf("RANK[%d]\tElement %d: [%f]\n",rank, i, rcv_buffer[i]); 
+        
+    free(rcv_buffer);
     free(data);
     MPI_Finalize();
     return 0;
@@ -86,6 +92,15 @@ double* gen_num_vector(int seq, int len){
     return data;
 }
 
+int cmpfunc (const void * a, const void * b)
+{
+  if (*(double*)a > *(double*)b)
+    return 1;
+  else if (*(double*)a < *(double*)b)
+    return -1;
+  else
+    return 0;  
+}
 
 double *merge(double *v1, int n1, double *v2, int n2)
 {
