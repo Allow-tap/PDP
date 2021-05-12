@@ -13,7 +13,7 @@ int main(int argc, char **argv) {
 
     /* Initializing MPI */
     int size, rank, pivotStrategy, len, seq;
-    double *data;
+    double *data, *rcv_buffer;
     MPI_Init( &argc, &argv );
     MPI_Comm_size( MPI_COMM_WORLD, &size);
     MPI_Comm_rank( MPI_COMM_WORLD, &rank );
@@ -22,12 +22,30 @@ int main(int argc, char **argv) {
     len=atoi(argv[2]);
     //pivotStrategy = atoi(argv[3]);
     data = gen_num_vector(seq,len);
- 
-    if ( data != NULL)
-        printf("SUCCESS\n");
-    for (int i =0; i < len; ++i)
-        printf("Element %d: [%f]\n",i, data[i]);
-    /* Split the data equally among the #PROCS */
+    /*if ( data != NULL)
+        printf("SUCCESS\n");*/
+
+
+    /* 1. Divide and distribute the data into p equal parts, one per process */
+    int chunk = len / size;
+    
+    /* Prints the values that we send*/
+    if (rank == 0){
+        for (int i =0; i < len; ++i)
+            printf("Element %d: [%f]\n",i, data[i]);  
+    }   
+
+    rcv_buffer = (double*)malloc(chunk*sizeof(double));
+    MPI_Scatter(data, chunk, MPI_DOUBLE, rcv_buffer, chunk, MPI_DOUBLE,0,MPI_COMM_WORLD);
+    
+    
+    /*Prints the values each PROC receives*/
+    for (int i =0; i < chunk; ++i)
+        printf("RANK[%d]\tElement %d: [%f]\n",rank, i, rcv_buffer[i]); 
+    
+    /* 2. Sort the data locally for each process  */
+    
+    
     
     free(data);
     MPI_Finalize();
