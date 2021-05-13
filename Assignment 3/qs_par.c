@@ -14,6 +14,7 @@ double* merge(double *v1, int n1, double *v2, int n2);
 int cmpfunc (const void * a, const void * b);
 double find_pivot(double* data, int len);
 double find_mean(double *data, int len);
+void check_pivot(double* data, int len, double pivot);
 
 int main(int argc, char **argv) {
 
@@ -46,14 +47,13 @@ int main(int argc, char **argv) {
     MPI_Scatter(data, chunk, MPI_DOUBLE, rcv_buffer, chunk, MPI_DOUBLE,0,MPI_COMM_WORLD);
     
     /* Prints the values each PROC receives */
-    /*
-    for (int i =0; i < chunk; ++i)
-        printf("RANK[%d]\tdata[%d]=[%f]\n",rank, i, rcv_buffer[i]); 
-    */
+    
+    //for (int i =0; i < chunk; ++i)
+    //    printf("RANK[%d]\tdata[%d]=[%f]\n",rank, i, rcv_buffer[i]); 
+    
 
 
     /*** 2. Sort the data locally for each process ***/
-    
     qsort(rcv_buffer, chunk, sizeof(double), cmpfunc); /* qsort() from stdlib does that for us */
 
     /* Check that qsort() is successfull */
@@ -69,16 +69,17 @@ int main(int argc, char **argv) {
         {
             /* ROOT find the Global PIVOT and broadcast it to all other PROCS */
             if (rank==0){
-                g_pivot = find_pivot(data, len);
-                /*
-                for (int i =0; i < chunk; ++i)
-                    printf("RANK[%d]\tElement %d: [%f]\n",rank, i, data[i]); 
+                g_pivot = find_pivot(rcv_buffer, len);
+                //g_pivot = find_mean(data, len);
                 
-                printf("Global Pivot [%f]", g_pivot);
-                */
+                //for (int i =0; i < chunk; ++i)
+                //    printf("RANK[%d]\tElement %d: [%f]\n",rank, i, data[i]); 
+                
+                printf("Global Pivot [%f]\n", g_pivot);
+                
             }
             MPI_Bcast ( &g_pivot, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
-            printf("Global Pivot [%f]", g_pivot);
+            //printf("Global Pivot [%f]", g_pivot);
         }
         break;
         case STRAT_TWO : /* Select the median of all medians in each processor group*/
@@ -108,7 +109,7 @@ int main(int argc, char **argv) {
 
     // 3.1 Input pivot strategy to use for each process set
 
-
+    check_pivot(data,len,g_pivot);
     free(rcv_buffer);
     free(data);
     MPI_Finalize();
@@ -136,6 +137,19 @@ double find_mean(double *data, int len){
     sum = sum/(double)len;
     return sum;
 }
+
+void check_pivot(double* data, int len, double pivot){
+    int lower,upper;    
+    for (int i=0; i<len; i++){
+        if (data[i] > pivot)
+            upper++;
+        else
+            lower++;
+        
+    }
+    printf("#lower=%d\t#upper=%d\n", lower, upper);
+}
+
 double* parallel_quicksort(MPI_Comm comm, int rank, int size, double* data, int chunk ){
 
 }
