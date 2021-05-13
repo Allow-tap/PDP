@@ -13,15 +13,15 @@ double* gen_num_vector(int seq, int len);
 double* merge(double *v1, int n1, double *v2, int n2);
 int cmpfunc (const void * a, const void * b);
 double find_pivot(double* data, int len);
-double find_mean(double *data, int len);
-void check_pivot(double* data, int len, double pivot);
+double find_mean(double* data, int len);
+void check_pivot(double* data, int len, double pivot, int rank);
+double pivot(int pivot_strat,int len, double *rcv_buffer, int rank, int size, MPI_Comm comm);
 
 int main(int argc, char **argv) {
 
-    /* Initializing MPI */
     int size, rank,len, seq, pivot_strat;
-    double *data, *rcv_buffer;
-    double g_pivot;
+    double *data, *rcv_buffer, g_pivot;
+    /* Initializing MPI */
     MPI_Init( &argc, &argv );
     MPI_Comm_size( MPI_COMM_WORLD, &size);
     MPI_Comm_rank( MPI_COMM_WORLD, &rank );
@@ -32,7 +32,6 @@ int main(int argc, char **argv) {
     data = gen_num_vector(seq,len);
 
     /*** 1. Divide and distribute the data into p equal parts, one per process ***/
-    
     int chunk = len / size;
     
     /* Prints the values that we send */
@@ -43,16 +42,14 @@ int main(int argc, char **argv) {
             printf("Element %d: [%f]\n",i, data[i]);  
     }   
     */
+
     rcv_buffer = (double*)malloc(chunk*sizeof(double));
     MPI_Scatter(data, chunk, MPI_DOUBLE, rcv_buffer, chunk, MPI_DOUBLE,0,MPI_COMM_WORLD);
     
     /* Prints the values each PROC receives */
-    
     //for (int i =0; i < chunk; ++i)
     //    printf("RANK[%d]\tdata[%d]=[%f]\n",rank, i, rcv_buffer[i]); 
     
-
-
     /*** 2. Sort the data locally for each process ***/
     qsort(rcv_buffer, chunk, sizeof(double), cmpfunc); /* qsort() from stdlib does that for us */
 
@@ -63,7 +60,30 @@ int main(int argc, char **argv) {
         printf("RANK[%d]\tElement %d: [%f]\n",rank, i, rcv_buffer[i]); 
     */
 
-    /*** Find the global PIVOT  ***/
+    /* Find the global Pivot  */
+    g_pivot = pivot(pivot_strat, chunk, rcv_buffer, rank, size, MPI_COMM_WORLD);
+    
+    /*** 3. Perform global sort  ***/
+
+    //Quicksort is recursive so it needs to be a function
+    //parallel_quicksort(MPI_Comm comm, int rank, int size, double* data, int chunk);
+
+
+
+
+    check_pivot(data,len,g_pivot,rank);
+    free(rcv_buffer);
+    free(data);
+    MPI_Finalize();
+    return 0;
+}
+
+double* parallel_quicksort(MPI_Comm comm, int rank, int size, double* data, int chunk){
+
+}
+
+double pivot(int pivot_strat,int len, double *rcv_buffer, int rank, int size, MPI_Comm comm){
+    double g_pivot = 0;
     switch (pivot_strat){
         case STRAT_ONE : /* 1. Select the median in one processor in each group of processors*/
         {
@@ -75,7 +95,7 @@ int main(int argc, char **argv) {
                 //for (int i =0; i < chunk; ++i)
                 //    printf("RANK[%d]\tElement %d: [%f]\n",rank, i, data[i]); 
                 
-                printf("Global Pivot [%f]\n", g_pivot);
+                //printf("Global Pivot [%f]\n", g_pivot);
                 
             }
             MPI_Bcast ( &g_pivot, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
@@ -88,7 +108,7 @@ int main(int argc, char **argv) {
             double all_median[size]; /* # of median values as our #PROCS */
             MPI_Allgather( &local_pivot, 1, MPI_DOUBLE, all_median, 1, MPI_DOUBLE, MPI_COMM_WORLD);
             g_pivot = find_pivot(all_median, size); /* median of all medians */
-            printf("Global Pivot [%f]\n", g_pivot);
+            //printf("Global Pivot [%f]\n", g_pivot);
         }
         break;
         case STRAT_THREE: /* Select the mean value of all medians in each processor group */
@@ -97,24 +117,11 @@ int main(int argc, char **argv) {
             double all_median[size]; /* # of median values as our #PROCS */
             MPI_Allgather( &local_pivot, 1, MPI_DOUBLE, all_median, 1, MPI_DOUBLE, MPI_COMM_WORLD);
             g_pivot = find_mean( all_median, size);
-            printf("Global Pivot [%f]\n", g_pivot);
+            //printf("Global Pivot [%f]\n", g_pivot);
         }
         break;
     }
-    
-    /*** 3. Perform global sort  ***/
-
-    //Quicksort is recursive so it needs to be a function
-    //quicksort();
-
-    // 3.1 Input pivot strategy to use for each process set
-
-    check_pivot(data,len,g_pivot);
-    free(rcv_buffer);
-    free(data);
-    MPI_Finalize();
-    return 0;
-    
+    return g_pivot;
 }
 
 double find_pivot(double* data, int len){
@@ -125,11 +132,12 @@ double find_pivot(double* data, int len){
     /* If number of elements is odd, that pivot is the middle element */
     if (len % 2 != 0)
         pivot = data[len/2];
-    /* Else we set it to be equal to half the sum of "2" middle elements */
+    /* Else we set it to be equal to half the sum of two "middle" elements */
     else
         pivot =  ((double)data[(len / 2) -1] + (double)data[(len / 2)]) / 2.0;
     return pivot;
 }
+
 double find_mean(double *data, int len){
     double sum = 0;
     for (int i=0; i<len; ++i)
@@ -138,7 +146,7 @@ double find_mean(double *data, int len){
     return sum;
 }
 
-void check_pivot(double* data, int len, double pivot){
+void check_pivot(double* data, int len, double pivot, int rank){
     int lower,upper;    
     for (int i=0; i<len; i++){
         if (data[i] > pivot)
@@ -147,11 +155,8 @@ void check_pivot(double* data, int len, double pivot){
             lower++;
         
     }
-    printf("#lower=%d\t#upper=%d\n", lower, upper);
-}
-
-double* parallel_quicksort(MPI_Comm comm, int rank, int size, double* data, int chunk ){
-
+    if (rank == 0)
+        printf("#lower=%d\t#upper=%d\n", lower, upper);
 }
 
 double* gen_num_vector(int seq, int len){
