@@ -179,6 +179,8 @@ int main(int argc, char **argv) {
 }
 
 double* parallel_quicksort(MPI_Comm group, int rank, int size, double* data, int chunk){
+    MPI_Comm_size( group, &size);
+    MPI_Comm_rank( group, &rank );
     //Repeat recursively until each group consists of one single process.
     if (size < 2){
     	return (data);
@@ -298,8 +300,10 @@ double* parallel_quicksort(MPI_Comm group, int rank, int size, double* data, int
 
 }//quicksort parallel
 
-double pivot(int pivot_strat,int len, double *rcv_buffer, int rank, int size, MPI_Comm comm){
+double pivot(int pivot_strat,int len, double *rcv_buffer, int rank, int size, MPI_Comm group){
     double l_pivot = 0;
+    MPI_Comm_size( group, &size);
+    MPI_Comm_rank( group, &rank );
     switch (pivot_strat){
         case STRAT_ONE : /* 1. Select the median in one processor in each group of processors*/
         {
@@ -314,7 +318,8 @@ double pivot(int pivot_strat,int len, double *rcv_buffer, int rank, int size, MP
                 //printf("Global Pivot [%f]\n", l_pivot);
 
             }
-            MPI_Bcast ( &l_pivot, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+            //MPI_Bcast ( &l_pivot, 1, MPI_DOUBLE, 0, MPI_COMM_WORLD);
+            MPI_Bcast ( &l_pivot, 1, MPI_DOUBLE, 0, group);
             //printf("Global Pivot [%f]", l_pivot);
 	    return l_pivot;
         }
@@ -323,7 +328,8 @@ double pivot(int pivot_strat,int len, double *rcv_buffer, int rank, int size, MP
         {
             double local_pivot = find_pivot(rcv_buffer, len); /* Each PROC find median of local buffer */
             double all_median[size]; /* # of median values as our #PROCS */
-            MPI_Allgather( &local_pivot, 1, MPI_DOUBLE, all_median, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+            //MPI_Allgather( &local_pivot, 1, MPI_DOUBLE, all_median, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+            MPI_Allgather( &local_pivot, 1, MPI_DOUBLE, all_median, 1, MPI_DOUBLE, group);
             l_pivot = find_pivot(all_median, size); /* median of all medians */
             //printf("Global Pivot [%f]\n", l_pivot);
 	    return l_pivot;
@@ -333,7 +339,8 @@ double pivot(int pivot_strat,int len, double *rcv_buffer, int rank, int size, MP
         {
             double local_pivot = find_pivot(rcv_buffer, len); /* Each PROC find median of local buffer */
             double all_median[size]; /* # of median values as our #PROCS */
-            MPI_Allgather( &local_pivot, 1, MPI_DOUBLE, all_median, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+            //MPI_Allgather( &local_pivot, 1, MPI_DOUBLE, all_median, 1, MPI_DOUBLE, MPI_COMM_WORLD);
+            MPI_Allgather( &local_pivot, 1, MPI_DOUBLE, all_median, 1, MPI_DOUBLE, group);
             l_pivot = find_mean( all_median, size);
             //printf("Global Pivot [%f]\n", l_pivot);
 	    return l_pivot;
