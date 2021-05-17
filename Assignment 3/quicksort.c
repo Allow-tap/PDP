@@ -41,11 +41,12 @@ int main(int argc, char **argv) {
     if (rank==0){
     	data = gen_num_vector(seq,len);
 
-    	//printf("\n");
-    	//for (int i=0; i<len; i++) {
-    	//	printf("%lf ", data[i]);
-    	//}
-    	//printf("\n");
+        // Prints the sequence.
+    	printf("\n");
+    	for (int i=0; i<len; i++) {
+    		printf("%lf ", data[i]);
+    	}
+    	printf("\n");
 
     }
 
@@ -79,8 +80,8 @@ int main(int argc, char **argv) {
     //    printf("RANK[%d]\tdata[%d]=[%f]\n",rank, i, rcv_buffer[i]);
 
     /*** 2. Sort the data locally for each process ***/
-    int descending = 1; /* Set to 1 to sort descending */
-    if (descending)
+    /* Use cmpfunc_desc for initial local sort if seq == -1 */
+    if (seq==-1)
         qsort(rcv_buffer, chunk, sizeof(double), cmpfunc_desc); /* qsort() from stdlib does that for us */
     else
         qsort(rcv_buffer, chunk, sizeof(double), cmpfunc);
@@ -100,9 +101,9 @@ int main(int argc, char **argv) {
     //Quicksort is recursive so it needs to be a function
     //parallel_quicksort(MPI_Comm comm, int rank, int size, double* data, int chunk);
     if (size > 1){
-	loc_runtime = MPI_Wtime();
+	    loc_runtime = MPI_Wtime();
     	rcv_buffer = parallel_quicksort(MPI_COMM_WORLD,rank, size, rcv_buffer,chunk);
-	loc_runtime = MPI_Wtime() - loc_runtime;
+	    loc_runtime = MPI_Wtime() - loc_runtime;
     	//printf("\ncurrentsize:%d\n",currentsize);
         if( rank != 0 ){
             // All processes send to Zero.
@@ -137,7 +138,6 @@ int main(int argc, char **argv) {
         }
     }
 
-    /*
     if (rank==0){
 
     	printf("\n");
@@ -158,7 +158,6 @@ int main(int argc, char **argv) {
     	}
     	if (OK) printf("Data sorted correctly!\n");
     }
-    */
 
     MPI_Barrier(MPI_COMM_WORLD);
     parr_runtime = MPI_Wtime() - parr_runtime;
@@ -414,6 +413,14 @@ double* gen_num_vector(int seq, int len){
             data[i]=sqrt(-2*log(x))*cos(2*PI*y);
         }
     }
+
+    else if (seq==-1) {
+	// Descending order
+	for (i=0;i<len;i++) {
+	    data[i] = len-i;
+	}
+    }
+
     return data;
 }
 
